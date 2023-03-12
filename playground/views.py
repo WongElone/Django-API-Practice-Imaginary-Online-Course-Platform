@@ -1,4 +1,4 @@
-from .serializers import CourseCategorySerializer, CourseSerializer, CreateUpdateCourseCategorySerializer
+from .serializers import CourseCategorySerializer, CourseSerializer, GetCourseSerializer, CreateUpdateCourseCategorySerializer
 from django.shortcuts import get_object_or_404
 from .models import CourseCategory, Course
 from rest_framework import status
@@ -13,66 +13,20 @@ from pprint import pprint
 @api_view()
 def index(request):
     return Response('ok')
-
-class CourseCategoryList(APIView):
-    def get(self, request):
-        queryset = CourseCategory.objects.prefetch_related('courses').all()
-        serializer = CourseCategorySerializer(queryset, many=True)
-        return Response(serializer.data)
-    def post(self, request):
-        serializer = CreateUpdateCourseCategorySerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        pprint(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-class CourseCategoryDetail(APIView):
-    def get(self, request, pk):
-        category = CourseCategory.objects.get(pk=pk)
-        serializer = CourseCategorySerializer(category)
-        return Response(serializer.data)
-    def put(self, request, pk):
-        category = CourseCategory.objects.get(pk=pk)
-        serializer = CreateUpdateCourseCategorySerializer(category, data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)
-    def patch(self, request, pk):
-        category = CourseCategory.objects.get(pk=pk)
-        serializer = CreateUpdateCourseCategorySerializer(category, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)
-
-@api_view(['GET', 'POST'])
-def course_list(request):
-    if request.method == 'GET':
-        queryset = Course.objects.select_related('category').all()
-        serializer = CourseSerializer(queryset, many=True, context={'request': request})
-        return Response(serializer.data)
-    elif request.method == 'POST':
-        serializer = CourseSerializer(data=request.data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-@api_view(['GET', 'PUT', 'PATCH', 'DELETE'])
-def course_detail(request, pk):
-    course = get_object_or_404(Course, pk=pk)
-    if request.method == 'GET':
-        serializer = CourseSerializer(course)
-        return Response(serializer.data)
-    elif request.method in ('PUT', 'PATCH'):
-        partialUpdate = (request.method == 'PATCH')
-        serializer = CourseSerializer(course, data=request.data, partial=partialUpdate)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)
-    elif request.method in ('DELETE'):
-        course.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
     
-# class CourseViewSet(ModelViewSet):
-#     queryset = Course.objects.select_related('category').all()
-#     serializer_class = CourseSerializer
+class CourseCategoryViewSet(ModelViewSet):
+    queryset = CourseCategory.objects.prefetch_related('courses').all()
+    
+    def get_serializer_class(self):
+        if (self.request.method == 'GET'):
+            return CourseCategorySerializer
+        return CreateUpdateCourseCategorySerializer
+    
+class CourseViewSet(ModelViewSet):
+    queryset = Course.objects.select_related('category').all()
+
+    def get_serializer_class(self):
+        if (self.request.method == 'GET'):
+            return GetCourseSerializer
+        return CourseSerializer
 

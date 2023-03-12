@@ -32,10 +32,17 @@ class SimpleCourseCategorySerializer(serializers.ModelSerializer):
         model = CourseCategory
         fields = ['id', 'title']
 
-class CourseSerializer(serializers.ModelSerializer):
+class GetCourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
         fields = ['id', 'title', 'created_at', 'category']
+
+    category = SimpleCourseCategorySerializer()
+
+class CourseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Course
+        fields = ['title', 'category']
 
     def validate(self, attrs):
         foul_lang = ['fuck', 'ass', 'shit']
