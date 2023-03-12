@@ -1,4 +1,4 @@
-from .serializers import CourseCategorySerializer, CourseSerializer, CreateCourseSerializer
+from .serializers import CourseCategorySerializer, CourseSerializer, CreateCourseSerializer, CreateUpdateCourseCategorySerializer
 from django.shortcuts import get_object_or_404
 from .models import CourseCategory, Course
 from rest_framework import status
@@ -12,6 +12,36 @@ from pprint import pprint
 @api_view()
 def index(request):
     return Response('ok')
+
+class CourseCategoryList(APIView):
+    def get(self, request):
+        queryset = CourseCategory.objects.prefetch_related('courses').all()
+        serializer = CourseCategorySerializer(queryset, many=True)
+        return Response(serializer.data)
+    def post(self, request):
+        serializer = CreateUpdateCourseCategorySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        pprint(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+class CourseCategoryDetail(APIView):
+    def get(self, request, pk):
+        category = CourseCategory.objects.get(pk=pk)
+        serializer = CourseCategorySerializer(category)
+        return Response(serializer.data)
+    def put(self, request, pk):
+        category = CourseCategory.objects.get(pk=pk)
+        serializer = CreateUpdateCourseCategorySerializer(category, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+    def patch(self, request, pk):
+        category = CourseCategory.objects.get(pk=pk)
+        serializer = CreateUpdateCourseCategorySerializer(category, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
 @api_view()
 def course_category_list(request):

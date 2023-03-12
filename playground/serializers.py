@@ -4,21 +4,28 @@ from .models import Course, CourseCategory
 class CourseCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = CourseCategory
-        fields = ['id', 'title', 'courses_list', 'slug']
+        fields = ['id', 'title', 'courses', 'slug']
 
-    courses_list = serializers.SerializerMethodField(source='courses', method_name='courses_details')
+    courses = serializers.SerializerMethodField(source='courses', method_name='courses_details')
 
     def courses_details(self, category):
+        #FIXME:
         courses = Course.objects.filter(category=category)
         return [{
             'id': course.id,
             'title': course.title,
         } for course in courses]
+        
 
     slug = serializers.SerializerMethodField(method_name='get_slug')
 
     def get_slug(self, category: CourseCategory):
         return f'{category.id} - {category.title}'
+    
+class CreateUpdateCourseCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CourseCategory
+        fields = ['title', 'courses']
     
 class SimpleCourseCategorySerializer(serializers.ModelSerializer):
     class Meta:
