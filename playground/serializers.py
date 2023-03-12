@@ -17,7 +17,7 @@ class CourseCategorySerializer(serializers.ModelSerializer):
         } for course in courses]
         
 
-    slug = serializers.SerializerMethodField(method_name='get_slug')
+    slug = serializers.SerializerMethodField(method_name='get_slug', read_only=True)
 
     def get_slug(self, category: CourseCategory):
         return f'{category.id} - {category.title}'
@@ -37,16 +37,8 @@ class CourseSerializer(serializers.ModelSerializer):
         model = Course
         fields = ['id', 'title', 'created_at', 'category']
 
-    category = SimpleCourseCategorySerializer()
-    
-class CreateCourseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Course
-        fields = ['title', 'category']
-    
     def validate(self, attrs):
         foul_lang = ['fuck', 'ass', 'shit']
         if any(word in attrs['title'] for word in foul_lang) or attrs['title'] == 'fucky':
-            return serializers.ValidationError('Title must not contain foul languages')
+            raise serializers.ValidationError('Title must not contain foul languages')
         return attrs
-        
