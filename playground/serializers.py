@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Course, CourseCategory
+from .models import Course, CourseCategory, Teacher, Student
 
 class CourseCategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -49,3 +49,9 @@ class CourseSerializer(serializers.ModelSerializer):
         if any(word in attrs['title'] for word in foul_lang) or attrs['title'] == 'fucky':
             raise serializers.ValidationError('Title must not contain foul languages')
         return attrs
+
+
+# class TeacherSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Teacher
+#         fields = ['first_name', 'last_name', 'courses']
