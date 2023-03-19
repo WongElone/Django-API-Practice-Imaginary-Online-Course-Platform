@@ -1,21 +1,17 @@
 from rest_framework import serializers
 from .models import Course, CourseCategory, Teacher, Student
 
+
+class SimpleCourseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Course
+        fields = ['id', 'title']
 class CourseCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = CourseCategory
         fields = ['id', 'title', 'courses', 'slug']
-
-    courses = serializers.SerializerMethodField(source='courses', method_name='courses_details')
-
-    def courses_details(self, category):
-        #FIXME:
-        courses = Course.objects.filter(category=category)
-        return [{
-            'id': course.id,
-            'title': course.title,
-        } for course in courses]
-        
+    
+    courses = SimpleCourseSerializer(many=True)
 
     slug = serializers.SerializerMethodField(method_name='get_slug', read_only=True)
 
@@ -32,17 +28,29 @@ class SimpleCourseCategorySerializer(serializers.ModelSerializer):
         model = CourseCategory
         fields = ['id', 'title']
 
+class SimpleTeacherSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Teacher
+        fields = ['id', 'first_name', 'last_name']
+
+class SimpleStudentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Student
+        fields = ['id', 'first_name', 'last_name']
+
 class GetCourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
-        fields = ['id', 'title', 'created_at', 'category']
+        fields = ['id', 'title', 'created_at', 'category', 'teachers', 'students']
 
     category = SimpleCourseCategorySerializer()
+    teachers = SimpleTeacherSerializer(many=True)
+    students = SimpleStudentSerializer(many=True)
 
 class CourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
-        fields = ['title', 'category']
+        fields = ['title', 'category', 'teachers']
 
     def validate(self, attrs):
         foul_lang = ['fuck', 'ass', 'shit']
@@ -51,7 +59,27 @@ class CourseSerializer(serializers.ModelSerializer):
         return attrs
 
 
-# class TeacherSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Teacher
-#         fields = ['first_name', 'last_name', 'courses']
+class TeacherSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Teacher
+        fields = ['first_name', 'last_name', 'courses']
+
+
+class GetTeacherSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Teacher
+        fields = ['first_name', 'last_name', 'courses']
+
+    courses = SimpleCourseSerializer(many=True)
+
+class StudentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Student
+        fields = ['first_name', 'last_name', 'courses']
+
+class GetStudentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Student
+        fields = ['first_name', 'last_name', 'courses']
+
+    courses = GetCourseSerializer(many=True)

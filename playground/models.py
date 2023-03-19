@@ -18,7 +18,7 @@ class Course(models.Model):
 class Teacher(models.Model):
     first_name = models.CharField(max_length=255)
     last_name = models.CharField(max_length=255)
-    courses = models.ManyToManyField(Course, blank=True)
+    courses = models.ManyToManyField(Course, blank=True, related_name='teachers')
 
     def __str__(self) -> str:
         return f'{self.first_name} {self.last_name}'
@@ -26,7 +26,7 @@ class Teacher(models.Model):
 class Student(models.Model):
     first_name = models.CharField(max_length=255)
     last_name = models.CharField(max_length=255)
-    courses = models.ManyToManyField(Course, blank=True)
+    courses = models.ManyToManyField(Course, blank=True, related_name='students')
 
     def __str__(self) -> str:
         return f'{self.first_name} {self.last_name}'
