@@ -1,6 +1,6 @@
-from .serializers import CourseCategorySerializer, CourseSerializer, GetCourseSerializer, CreateUpdateCourseCategorySerializer, TeacherSerializer, GetTeacherSerializer, StudentSerializer, GetStudentSerializer
+from .serializers import CourseCategorySerializer, CourseSerializer, GetCourseSerializer, CreateUpdateCourseCategorySerializer, TeacherSerializer, GetTeacherSerializer, StudentSerializer, GetStudentSerializer, AssignmentSerializer, GetAssignmentSerializer, PostAssignmentSerializer
 from django.shortcuts import get_object_or_404
-from .models import CourseCategory, Course, Teacher, Student
+from .models import CourseCategory, Course, Teacher, Student, Assignment
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view 
@@ -45,3 +45,19 @@ class StudentViewSet(ModelViewSet):
         if self.request.method == 'GET':
             return GetStudentSerializer
         return StudentSerializer
+
+class AssignmentViewSet(ModelViewSet):
+    queryset = Assignment.objects.select_related('course').prefetch_related('teachers').all()
+
+    def get_serializer_context(self):
+        context = {}
+        if 'pk' in self.kwargs:
+            context['assignment_id'] = self.kwargs['pk']
+        return context
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return GetAssignmentSerializer
+        elif self.request.method == 'POST':
+            return PostAssignmentSerializer
+        return AssignmentSerializer

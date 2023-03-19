@@ -7,6 +7,7 @@ routers.register('course_categories', views.CourseCategoryViewSet)
 routers.register('courses', views.CourseViewSet)
 routers.register('teachers', views.TeacherViewSet)
 routers.register('students', views.StudentViewSet)
+routers.register('assignments', views.AssignmentViewSet)
 
 urlpatterns = [
     path('', include(routers.urls)),

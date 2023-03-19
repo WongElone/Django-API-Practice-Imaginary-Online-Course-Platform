@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Course, CourseCategory, Teacher, Student
+from .models import Course, CourseCategory, Teacher, Student, Assignment
 
 
 class SimpleCourseSerializer(serializers.ModelSerializer):
@@ -83,3 +83,43 @@ class GetStudentSerializer(serializers.ModelSerializer):
         fields = ['first_name', 'last_name', 'courses']
 
     courses = GetCourseSerializer(many=True)
+
+class AssignmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Assignment
+        fields = ['title', 'allow_submit', 'teachers']
+    # should not allow chaning course that the assignment belongs to in PUT and PATCH
+
+    def validate(self, attrs):
+        related_teachers = Teacher.objects.filter(
+            courses=Assignment.objects.get(
+                pk=self.context['assignment_id']
+            ).course
+        )
+        related_teachers_ids = [teacher.id for teacher in related_teachers]
+        if not all((teacher.id in related_teachers_ids) for teacher in attrs['teachers']):
+        # if any teacher in attr['teachers'] is not related to the course
+            raise serializers.ValidationError('Chosen teacher is not in the course')
+        return attrs
+    
+class PostAssignmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Assignment
+        fields = ['title', 'allow_submit', 'teachers', 'course']
+
+    def validate(self, attrs):
+        related_teachers = Teacher.objects.filter(
+            courses=self.initial_data['course'][0]
+        )
+        related_teachers_ids = [teacher.id for teacher in related_teachers]
+        if not all((int(teacher_id) in related_teachers_ids) for teacher_id in self.initial_data['teachers']):
+            raise serializers.ValidationError('Chosen teacher is not in chosen course')
+        return attrs
+
+class GetAssignmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Assignment
+        fields = ['id', 'title', 'allow_submit', 'teachers', 'course']
+
+    teachers = SimpleTeacherSerializer(many=True)
+    course = SimpleCourseSerializer()
