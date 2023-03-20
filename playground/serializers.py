@@ -1,6 +1,5 @@
 from rest_framework import serializers
-from .models import Course, CourseCategory, Teacher, Student, Assignment
-
+from .models import Course, CourseCategory, Teacher, Student, Assignment, Member
 
 class SimpleCourseSerializer(serializers.ModelSerializer):
     class Meta:
@@ -123,3 +122,10 @@ class GetAssignmentSerializer(serializers.ModelSerializer):
 
     teachers = SimpleTeacherSerializer(many=True)
     course = SimpleCourseSerializer()
+
+class MemberSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Member
+        fields = ['id', 'user_id', 'birth_date']
+
+    user_id = serializers.IntegerField(read_only=True)

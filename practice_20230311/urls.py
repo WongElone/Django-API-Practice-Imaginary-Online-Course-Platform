@@ -17,7 +17,9 @@ from django.contrib import admin
 from django.urls import path, include
 
 urlpatterns = [
-    path('playground/', include('playground.urls')),
-    path('admin/', admin.site.urls),
-    path('__debug__/', include('debug_toolbar.urls')),
+    path(r'playground/', include('playground.urls')),
+    path(r'admin/', admin.site.urls),
+    path(r'__debug__/', include('debug_toolbar.urls')),
+    path(r'auth/', include('djoser.urls')),
+    path(r'auth/', include('djoser.urls.jwt')),
 ]

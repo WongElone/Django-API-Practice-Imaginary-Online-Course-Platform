@@ -1,11 +1,13 @@
-from .serializers import CourseCategorySerializer, CourseSerializer, GetCourseSerializer, CreateUpdateCourseCategorySerializer, TeacherSerializer, GetTeacherSerializer, StudentSerializer, GetStudentSerializer, AssignmentSerializer, GetAssignmentSerializer, PostAssignmentSerializer
+from .serializers import CourseCategorySerializer, CourseSerializer, GetCourseSerializer, CreateUpdateCourseCategorySerializer, TeacherSerializer, GetTeacherSerializer, StudentSerializer, GetStudentSerializer, AssignmentSerializer, GetAssignmentSerializer, PostAssignmentSerializer, MemberSerializer
 from django.shortcuts import get_object_or_404
-from .models import CourseCategory, Course, Teacher, Student, Assignment
+from .models import CourseCategory, Course, Teacher, Student, Assignment, Member
 from rest_framework import status
 from rest_framework.response import Response
-from rest_framework.decorators import api_view 
+from rest_framework.decorators import api_view, action
 from rest_framework.views import APIView
-from rest_framework.viewsets import ModelViewSet
+from rest_framework.viewsets import ModelViewSet, GenericViewSet
+from rest_framework.mixins import CreateModelMixin, UpdateModelMixin, RetrieveModelMixin
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from pprint import pprint
 
 
@@ -61,3 +63,27 @@ class AssignmentViewSet(ModelViewSet):
         elif self.request.method == 'POST':
             return PostAssignmentSerializer
         return AssignmentSerializer
+    
+class MemberViewSet(CreateModelMixin, RetrieveModelMixin, UpdateModelMixin, GenericViewSet):
+    queryset = Member.objects.all()
+    serializer_class = MemberSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
+    @action(detail=False, methods=['GET', 'PUT'])
+    def me(self, request):
+        if request.user.id is None:
+            return Response('Need login before viewing your own profile.', status=status.HTTP_401_UNAUTHORIZED)
+        (member, created) = Member.objects.get_or_create(user_id=request.user.id)
+        if request.method == 'GET':
+            serializer = MemberSerializer(member)
+            return Response(serializer.data)
+        elif request.method == 'PUT':
+            serializer = MemberSerializer(member, data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
