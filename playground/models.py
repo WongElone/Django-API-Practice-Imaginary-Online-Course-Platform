@@ -30,14 +30,6 @@ class Student(models.Model):
     def __str__(self) -> str:
         return f'{self.user.first_name} {self.user.last_name}'
 
-class UserRole(models.Model):
-    class Role(models.TextChoices):
-        TEACHER = 'TE', 'Teacher'
-        STUDENT = 'ST', 'Student'
-
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    role = models.CharField(max_length=2, choices=Role.choices)
-
 class Assignment(models.Model):
     title = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
