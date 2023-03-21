@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Course, CourseCategory, Teacher, Student, Assignment, Member
+from .models import Course, CourseCategory, Teacher, Student, Assignment
 
 class SimpleCourseSerializer(serializers.ModelSerializer):
     class Meta:
@@ -30,12 +30,12 @@ class SimpleCourseCategorySerializer(serializers.ModelSerializer):
 class SimpleTeacherSerializer(serializers.ModelSerializer):
     class Meta:
         model = Teacher
-        fields = ['id', 'first_name', 'last_name']
+        fields = ['id', 'user_id']
 
 class SimpleStudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
-        fields = ['id', 'first_name', 'last_name']
+        fields = ['id', 'user_id']
 
 class GetCourseSerializer(serializers.ModelSerializer):
     class Meta:
@@ -61,26 +61,26 @@ class CourseSerializer(serializers.ModelSerializer):
 class TeacherSerializer(serializers.ModelSerializer):
     class Meta:
         model = Teacher
-        fields = ['first_name', 'last_name', 'courses']
+        fields = ['courses']
 
 
 class GetTeacherSerializer(serializers.ModelSerializer):
     class Meta:
         model = Teacher
-        fields = ['first_name', 'last_name', 'courses']
+        fields = ['id', 'user_id', 'courses']
 
     courses = SimpleCourseSerializer(many=True)
 
 class StudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
-        fields = ['first_name', 'last_name', 'courses']
+        fields = ['courses']
 
 class GetStudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
-        fields = ['first_name', 'last_name', 'courses']
-
+        fields = ['id', 'user_id', 'courses']
+    
     courses = GetCourseSerializer(many=True)
 
 class AssignmentSerializer(serializers.ModelSerializer):
@@ -123,9 +123,3 @@ class GetAssignmentSerializer(serializers.ModelSerializer):
     teachers = SimpleTeacherSerializer(many=True)
     course = SimpleCourseSerializer()
 
-class MemberSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Member
-        fields = ['id', 'user_id', 'birth_date']
-
-    user_id = serializers.IntegerField(read_only=True)
