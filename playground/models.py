@@ -11,6 +11,7 @@ class CourseCategory(models.Model):
 class Course(models.Model):
     title = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
+    # TODO: allow category to be null
     category = models.ForeignKey(CourseCategory, on_delete=models.CASCADE, related_name='courses')
 
     def __str__(self) -> str:
@@ -21,14 +22,14 @@ class Teacher(models.Model):
     courses = models.ManyToManyField(Course, blank=True, related_name='teachers')
 
     def __str__(self) -> str:
-        return f'{self.user.first_name} {self.user.last_name}'
+        return self.user.username
     
 class Student(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     courses = models.ManyToManyField(Course, blank=True, related_name='students')
 
     def __str__(self) -> str:
-        return f'{self.user.first_name} {self.user.last_name}'
+        return self.user.username
 
 class Assignment(models.Model):
     title = models.CharField(max_length=255)

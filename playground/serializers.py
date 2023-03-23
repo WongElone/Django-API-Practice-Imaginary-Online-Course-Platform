@@ -31,7 +31,6 @@ class SimpleTeacherSerializer(serializers.ModelSerializer):
     class Meta:
         model = Teacher
         fields = ['id', 'user_id']
-
 class SimpleStudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
@@ -49,7 +48,8 @@ class GetCourseSerializer(serializers.ModelSerializer):
 class CourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
-        fields = ['title', 'category', 'teachers']
+        fields = ['title', 'category']
+        # TODO: allow category to be null  
 
     def validate(self, attrs):
         foul_lang = ['fuck', 'ass', 'shit']
@@ -58,11 +58,10 @@ class CourseSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class TeacherSerializer(serializers.ModelSerializer):
+class PutTeacherSerializer(serializers.ModelSerializer):
     class Meta:
         model = Teacher
         fields = ['courses']
-
 
 class GetTeacherSerializer(serializers.ModelSerializer):
     class Meta:
@@ -71,7 +70,7 @@ class GetTeacherSerializer(serializers.ModelSerializer):
 
     courses = SimpleCourseSerializer(many=True)
 
-class StudentSerializer(serializers.ModelSerializer):
+class PutStudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
         fields = ['courses']

@@ -10,5 +10,5 @@ routers.register('students', views.StudentViewSet)
 routers.register('assignments', views.AssignmentViewSet)
 
 urlpatterns = [
-    path('', include(routers.urls)),
+    path('api/', include(routers.urls)),
 ]
