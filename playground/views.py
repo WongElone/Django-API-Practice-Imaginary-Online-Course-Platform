@@ -52,9 +52,19 @@ class CourseViewSet(ModelViewSet):
         context = super().get_serializer_context()
         context['user_id'] = self.request.user.id
         return context
+    
+    def create(self, request, *args, **kwargs):
+        teacher = Teacher.objects.filter(user_id=self.request.user.id).first()
+        if self.request.user.is_staff or teacher:
+            self.request.user.teacher = teacher
+            response = super().create(request, *args, **kwargs)
+            return response
+        return Response('Require admin or teacher account.', status=status.HTTP_403_FORBIDDEN)
+        # TODO: multiple teacher course
 
     def perform_create(self, serializer):
-        teacher = Teacher.objects.get(user_id=self.request.user.id)
+        teacher = self.request.user.teacher
+        print("teacher is:", teacher)
         
         # if self.request.user.is_staff or teacher:
         with transaction.atomic():
@@ -63,19 +73,7 @@ class CourseViewSet(ModelViewSet):
             if teacher:
                 teacher.courses.add(newCourse)
                 teacher.save()
-                print("if teacher serializer", serializer)
-    
-    def create(self, request, *args, **kwargs):
-        teacher = Teacher.objects.get(user_id=self.request.user.id)
-        if self.request.user.is_staff or teacher:
-            print('before calling create')
-            response = super().create(request, *args, **kwargs)
-            print('after calling create')
-            print(response)
-            pprint(response)
-            return response
-        return Response('Require admin or teacher account.', status=status.HTTP_403_FORBIDDEN)
-        # TODO: multiple teacher course
+
 
 class TeacherViewSet(ModelViewSet):
     queryset = Teacher.objects.select_related('user').prefetch_related('courses').all()
@@ -126,13 +124,16 @@ class StudentViewSet(ModelViewSet):
             return Response(serializer.data)
     
 class AssignmentViewSet(ModelViewSet):
-    queryset = Assignment.objects.select_related('course').prefetch_related('teachers').all()
+    queryset = Assignment.objects.select_related('course', 'teacher').all()
 
     def get_serializer_context(self):
-        context = {}
-        if 'pk' in self.kwargs:
-            context['assignment_id'] = self.kwargs['pk']
-        return context
+        return super().get_serializer_context()
+
+    # def get_serializer_context(self):
+    #     context = super().get_serializer_context()
+    #     if 'pk' in self.kwargs:
+    #         context['assignment_id'] = self.kwargs['pk']
+    #     return context
 
     def get_serializer_class(self):
         if self.request.method == 'GET':
@@ -140,5 +141,9 @@ class AssignmentViewSet(ModelViewSet):
         elif self.request.method == 'POST':
             return PostAssignmentSerializer
         return AssignmentSerializer
+    
+    # automatically add teacher (the user) when assignment is created
+    # do not allow change teacher
+    # nested assignment into course
     
 

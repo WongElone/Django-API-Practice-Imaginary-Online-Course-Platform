@@ -36,7 +36,7 @@ class Assignment(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     allow_submit = models.BooleanField(default=True)
-    teachers = models.ManyToManyField(Teacher, related_name='assignments')
+    teacher = models.ForeignKey(Teacher, null=True, blank=True, on_delete=models.SET_NULL, related_name='assignments')
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='assignments')
 
     def __str__(self) -> str:

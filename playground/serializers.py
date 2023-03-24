@@ -85,40 +85,27 @@ class GetStudentSerializer(serializers.ModelSerializer):
 class AssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Assignment
-        fields = ['title', 'allow_submit', 'teachers']
-    # should not allow chaning course that the assignment belongs to in PUT and PATCH
-
-    def validate(self, attrs):
-        related_teachers = Teacher.objects.filter(
-            courses=Assignment.objects.get(
-                pk=self.context['assignment_id']
-            ).course
-        )
-        related_teachers_ids = [teacher.id for teacher in related_teachers]
-        if not all((teacher.id in related_teachers_ids) for teacher in attrs['teachers']):
-        # if any teacher in attr['teachers'] is not related to the course
-            raise serializers.ValidationError('Chosen teacher is not in the course')
-        return attrs
+        fields = ['title', 'allow_submit']
+    # 'course' is not included because should not allow chaning course that the assignment belongs to in PUT and PATCH
     
 class PostAssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Assignment
-        fields = ['title', 'allow_submit', 'teachers', 'course']
+        fields = ['title', 'allow_submit', 'teacher', 'course']
 
-    def validate(self, attrs):
-        related_teachers = Teacher.objects.filter(
-            courses=self.initial_data['course'][0]
-        )
-        related_teachers_ids = [teacher.id for teacher in related_teachers]
-        if not all((int(teacher_id) in related_teachers_ids) for teacher_id in self.initial_data['teachers']):
-            raise serializers.ValidationError('Chosen teacher is not in chosen course')
-        return attrs
+    teacher = serializers.SerializerMethodField(method_name='get_teacher')
+
+    # teacher object is not serializable
+    def get_teacher(self, assignment: Assignment):
+        # write middleware to get teacher or student and pass to request
+        queryset = Teacher.objects.filter(user_id=self.context.get('request').user.id)
+        return queryset[0].id if queryset else None
 
 class GetAssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Assignment
-        fields = ['id', 'title', 'allow_submit', 'teachers', 'course']
+        fields = ['id', 'title', 'allow_submit', 'teacher', 'course']       
 
-    teachers = SimpleTeacherSerializer(many=True)
+    teacher = SimpleTeacherSerializer()
     course = SimpleCourseSerializer()
 
