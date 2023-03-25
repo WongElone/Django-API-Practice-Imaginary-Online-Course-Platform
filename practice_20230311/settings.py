@@ -140,8 +140,6 @@ REST_FRAMEWORK = {
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-AUTH_USER_MODEL = 'core.User'
-
 INTERNAL_IPS = [
     "127.0.0.1",
 ]
@@ -157,3 +155,8 @@ DJOSER = {
         'current_user': 'core.serializers.UserSerializer',
     }
 }
+
+# about the 'Core' app
+AUTH_USER_MODEL = 'core.User'
+USER_ROLE_STUDENT = 'ST'
+USER_ROLE_TEACHER = 'TE'

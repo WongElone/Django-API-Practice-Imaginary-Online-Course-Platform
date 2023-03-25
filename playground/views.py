@@ -8,9 +8,8 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 from rest_framework.mixins import CreateModelMixin, UpdateModelMixin, RetrieveModelMixin
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser, SAFE_METHODS
-from rest_framework import serializers
 from django.db import transaction
-from .permissions import IsAdminOrCourseTeacher, IsAdminOrCourseTeacherOrCourseStudent
+from .permissions import IsAdminOrCourseTeacher, IsAdminOrCourseTeacherOrCourseStudent, IsAdminOrTeacher
     
 class CourseCategoryViewSet(ModelViewSet):
     queryset = CourseCategory.objects.prefetch_related('courses').all()
@@ -81,8 +80,10 @@ class CourseViewSet(ModelViewSet):
     def get_permissions(self):
         if self.request.method in SAFE_METHODS:
             return [AllowAny()]
-        elif self.request.method in ('PUT', 'POST'):
-            return [IsAuthenticated()]
+        elif self.request.method == 'PUT':
+            return [IsAuthenticated(), IsAdminOrCourseTeacher()]
+        elif self.request.method == 'POST':
+            return [IsAuthenticated(), IsAdminOrTeacher()]
         return [IsAdminUser()]
 
     def get_serializer_class(self):
@@ -118,7 +119,9 @@ class AssignmentViewSet(ModelViewSet):
     def get_permissions(self):
         if self.request.method in SAFE_METHODS:
             return [IsAuthenticated(), IsAdminOrCourseTeacherOrCourseStudent()]
-        return [IsAuthenticated(), IsAdminOrCourseTeacher()]
+        if self.request.method in ('PUT', 'POST'):
+            return [IsAuthenticated(), IsAdminOrCourseTeacher()]
+        return [IsAdminUser()]
 
     def get_queryset(self):
         return Assignment.objects.filter(
@@ -138,7 +141,9 @@ class LessonViewSet(ModelViewSet):
     def get_permissions(self):
         if self.request.method in SAFE_METHODS:
             return [IsAuthenticated(), IsAdminOrCourseTeacherOrCourseStudent()]
-        return [IsAuthenticated(), IsAdminOrCourseTeacher()]
+        if self.request.method in ('PUT', 'POST'):
+            return [IsAuthenticated(), IsAdminOrCourseTeacher()]
+        return [IsAdminUser()]
 
     def get_queryset(self):
         return Lesson.objects.filter(
