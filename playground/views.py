@@ -1,4 +1,4 @@
-from .serializers import CourseCategorySerializer, CourseSerializer, GetCourseSerializer, CreateUpdateCourseCategorySerializer, PutTeacherSerializer, GetTeacherSerializer, PutStudentSerializer, GetStudentSerializer, AssignmentSerializer, GetAssignmentSerializer, PostAssignmentSerializer
+from .serializers import CourseCategorySerializer, CourseSerializer, GetCourseSerializer, CreateUpdateCourseCategorySerializer, PutTeacherSerializer, GetTeacherSerializer, PutStudentSerializer, GetStudentSerializer, AssignmentSerializer, GetAssignmentSerializer
 from django.shortcuts import get_object_or_404
 from .models import CourseCategory, Course, Teacher, Student, Assignment
 from rest_framework import status
@@ -33,7 +33,8 @@ class CourseCategoryViewSet(ModelViewSet):
         return CreateUpdateCourseCategorySerializer
         # request.data.course in [course.id for course in teacher.courses]
 class CourseViewSet(ModelViewSet):
-    queryset = Course.objects.select_related('category').all()
+    def get_queryset(self):
+        return Course.objects.select_related('category').all()
 
     def get_permissions(self):
         if self.request.method in SAFE_METHODS:
@@ -55,17 +56,14 @@ class CourseViewSet(ModelViewSet):
     
     def create(self, request, *args, **kwargs):
         teacher = Teacher.objects.filter(user_id=self.request.user.id).first()
-        if self.request.user.is_staff or teacher:
-            self.request.user.teacher = teacher
-            response = super().create(request, *args, **kwargs)
-            return response
+        self.request.user.teacher = teacher
+        if self.request.user.is_staff or self.request.user.teacher:
+            return super().create(request, *args, **kwargs)
         return Response('Require admin or teacher account.', status=status.HTTP_403_FORBIDDEN)
         # TODO: multiple teacher course
 
     def perform_create(self, serializer):
-        teacher = self.request.user.teacher
-        print("teacher is:", teacher)
-        
+        teacher = self.request.user.teacher       
         # if self.request.user.is_staff or teacher:
         with transaction.atomic():
             newCourse = serializer.save()
@@ -124,26 +122,43 @@ class StudentViewSet(ModelViewSet):
             return Response(serializer.data)
     
 class AssignmentViewSet(ModelViewSet):
-    queryset = Assignment.objects.select_related('course', 'teacher').all()
+    def get_queryset(self):
+        return Assignment.objects.filter(
+            course_id=self.kwargs['course_pk']
+            ).select_related('course', 'teacher').all()
 
     def get_serializer_context(self):
+        # by calling super().get_serializer_context(), request will be passed to serializer context
         return super().get_serializer_context()
 
-    # def get_serializer_context(self):
-    #     context = super().get_serializer_context()
-    #     if 'pk' in self.kwargs:
-    #         context['assignment_id'] = self.kwargs['pk']
-    #     return context
-
     def get_serializer_class(self):
-        if self.request.method == 'GET':
+        if self.request.method in SAFE_METHODS:
             return GetAssignmentSerializer
-        elif self.request.method == 'POST':
-            return PostAssignmentSerializer
         return AssignmentSerializer
     
-    # automatically add teacher (the user) when assignment is created
-    # do not allow change teacher
-    # nested assignment into course
-    
+    def create(self, request, *args, **kwargs):
+        self.request.user.teacher = Teacher.objects.filter(user_id=self.request.user.id).prefetch_related('courses').first()
+        self.request.user.student = Student.objects.filter(user_id=self.request.user.id).first()
+        self.request.course = Course.objects.filter(pk=self.kwargs['course_pk']).first()
 
+        teacher = self.request.user.teacher
+        course = self.request.course
+
+        for teacher_course in teacher.courses.all():
+            print("course id:", teacher_course.id)
+        print("course is:", course)
+
+        if self.request.user.is_staff or \
+        (teacher and course.id in (teacher_course.id for teacher_course in teacher.courses.all())):
+            return super().create(request, *args, **kwargs)
+        return Response('Only authorized for admin or teachers of the course', status=status.HTTP_403_FORBIDDEN)
+
+    def perform_create(self, serializer):
+        teacher = self.request.user.teacher
+        course = self.request.course
+
+        serializer.validated_data['course_id'] = course.id
+        if teacher:
+            serializer.validated_data['teacher_id'] = teacher.id
+        serializer.save()            
+      

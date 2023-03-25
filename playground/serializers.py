@@ -86,20 +86,19 @@ class AssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Assignment
         fields = ['title', 'allow_submit']
-    # 'course' is not included because should not allow chaning course that the assignment belongs to in PUT and PATCH
     
-class PostAssignmentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Assignment
-        fields = ['title', 'allow_submit', 'teacher', 'course']
+# class PostAssignmentSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Assignment
+#         fields = ['title', 'allow_submit']
 
-    teacher = serializers.SerializerMethodField(method_name='get_teacher')
+#     teacher = serializers.SerializerMethodField(method_name='get_teacher')
 
-    # teacher object is not serializable
-    def get_teacher(self, assignment: Assignment):
-        # write middleware to get teacher or student and pass to request
-        queryset = Teacher.objects.filter(user_id=self.context.get('request').user.id)
-        return queryset[0].id if queryset else None
+#     # teacher object is not serializable
+#     def get_teacher(self, assignment: Assignment):
+#         # write middleware to get teacher or student and pass to request
+#         queryset = Teacher.objects.filter(user_id=self.context.get('request').user.id)
+#         return queryset[0].id if queryset else None
 
 class GetAssignmentSerializer(serializers.ModelSerializer):
     class Meta:
