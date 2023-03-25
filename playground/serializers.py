@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_framework import status
 from .models import Course, CourseCategory, Teacher, Student, Assignment
 
 class SimpleCourseSerializer(serializers.ModelSerializer):
@@ -55,7 +56,7 @@ class CourseSerializer(serializers.ModelSerializer):
         foul_lang = ['fuck', 'ass', 'shit']
         if any(word in attrs['title'] for word in foul_lang) or attrs['title'] == 'fucky':
             raise serializers.ValidationError('Title must not contain foul languages')
-        return attrs
+        return super().validate(attrs)
 
 
 class PutTeacherSerializer(serializers.ModelSerializer):
@@ -82,23 +83,28 @@ class GetStudentSerializer(serializers.ModelSerializer):
     
     courses = GetCourseSerializer(many=True)
 
+class CustomValidationError(serializers.ValidationError):
+    default_code = 'custom_error'
+    default_detail = 'Only authorized for admin or teachers of the course'
+
 class AssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Assignment
         fields = ['title', 'allow_submit']
-    
-# class PostAssignmentSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Assignment
-#         fields = ['title', 'allow_submit']
 
-#     teacher = serializers.SerializerMethodField(method_name='get_teacher')
-
-#     # teacher object is not serializable
-#     def get_teacher(self, assignment: Assignment):
-#         # write middleware to get teacher or student and pass to request
-#         queryset = Teacher.objects.filter(user_id=self.context.get('request').user.id)
-#         return queryset[0].id if queryset else None
+    def validate(self, attrs):
+        request = self.context['request']
+        teacher = Teacher.objects.filter(user_id=request.user.id).prefetch_related('courses').first()
+        student = Student.objects.filter(user_id=request.user.id).first()
+        course = Course.objects.filter(pk=self.context['course_pk']).first()
+        
+        if request.user.is_staff or \
+        (teacher and course.id in (teacher_course.id for teacher_course in teacher.courses.all())):
+            attrs['course_id'] = course.id
+            if teacher:
+                attrs['teacher_id'] = teacher.id
+            return super().validate(attrs)
+        raise serializers.ValidationError('Only authorized for admin or teachers of the course')
 
 class GetAssignmentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -107,4 +113,6 @@ class GetAssignmentSerializer(serializers.ModelSerializer):
 
     teacher = SimpleTeacherSerializer()
     course = SimpleCourseSerializer()
+
+
 
