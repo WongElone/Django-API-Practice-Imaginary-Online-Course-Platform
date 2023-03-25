@@ -83,10 +83,6 @@ class GetStudentSerializer(serializers.ModelSerializer):
     
     courses = GetCourseSerializer(many=True)
 
-class CustomValidationError(serializers.ValidationError):
-    default_code = 'custom_error'
-    default_detail = 'Only authorized for admin or teachers of the course'
-
 class AssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Assignment
@@ -96,19 +92,15 @@ class AssignmentSerializer(serializers.ModelSerializer):
     teacher = SimpleTeacherSerializer(read_only=True)
     course = SimpleCourseSerializer(read_only=True)
 
-    def validate(self, attrs):
+    def validate(self, attrs): # add attribute in validate function instead of create and update function can reduce codes       
+        attrs['course_id'] = self.context['course_pk']
+
         request = self.context['request']
-        teacher = Teacher.objects.filter(user_id=request.user.id).prefetch_related('courses').first()
-        student = Student.objects.filter(user_id=request.user.id).first()
-        course = Course.objects.filter(pk=self.context['course_pk']).first()
+        teacher = Teacher.objects.filter(user_id=request.user.id).first()
+        if teacher:
+            attrs['teacher_id'] = teacher.id
         
-        if request.user.is_staff or \
-        (teacher and course.id in (teacher_course.id for teacher_course in teacher.courses.all())):
-            attrs['course_id'] = course.id
-            if teacher:
-                attrs['teacher_id'] = teacher.id
-            return super().validate(attrs)
-        raise serializers.ValidationError('Only authorized for admin or teachers of the course')
+        return super().validate(attrs)
 
 class LessonSerializer(serializers.ModelSerializer):
     class Meta:
@@ -119,12 +111,5 @@ class LessonSerializer(serializers.ModelSerializer):
     course = SimpleCourseSerializer(read_only=True)
 
     def validate(self, attrs):
-        request = self.context['request']
-        teacher = Teacher.objects.filter(user_id=request.user.id).first()
-        course = Course.objects.filter(pk=self.context['course_pk']).first()
-
-        if request.user.is_staff or \
-        (teacher and teacher.id in (course_teacher.id for course_teacher in course.teachers.all())):
-            attrs['course_id'] = self.context['course_pk']
-            return super().validate(attrs)
-        raise serializers.ValidationError('Only authorized for admin or teachers of the course')
+        attrs['course_id'] = self.context['course_pk']
+        return super().validate(attrs)

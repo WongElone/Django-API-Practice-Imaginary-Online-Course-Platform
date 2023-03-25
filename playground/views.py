@@ -10,6 +10,7 @@ from rest_framework.mixins import CreateModelMixin, UpdateModelMixin, RetrieveMo
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser, SAFE_METHODS
 from rest_framework import serializers
 from django.db import transaction
+from .permissions import IsAdminOrCourseTeacher, IsAdminOrCourseTeacherOrCourseStudent
     
 class CourseCategoryViewSet(ModelViewSet):
     queryset = CourseCategory.objects.prefetch_related('courses').all()
@@ -24,46 +25,6 @@ class CourseCategoryViewSet(ModelViewSet):
             return CourseCategorySerializer
         return CreateUpdateCourseCategorySerializer
         # request.data.course in [course.id for course in teacher.courses]
-class CourseViewSet(ModelViewSet):
-    def get_queryset(self):
-        return Course.objects.select_related('category').all()
-
-    def get_permissions(self):
-        if self.request.method in SAFE_METHODS:
-            return [AllowAny()]
-        elif self.request.method in ('PUT', 'POST'):
-            return [IsAuthenticated()]
-        return [IsAdminUser()]
-
-    def get_serializer_class(self):
-        if self.request.method == 'GET':
-            return GetCourseSerializer
-        return CourseSerializer
-        # TODO: for PUT, only the course teacher and admin can change course detail
-
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context['user_id'] = self.request.user.id
-        return context
-    
-    def create(self, request, *args, **kwargs):
-        teacher = Teacher.objects.filter(user_id=self.request.user.id).first()
-        self.request.user.teacher = teacher
-        if self.request.user.is_staff or self.request.user.teacher:
-            return super().create(request, *args, **kwargs)
-        return Response('Require admin or teacher account.', status=status.HTTP_403_FORBIDDEN)
-        # TODO: multiple teacher course
-
-    def perform_create(self, serializer):
-        teacher = self.request.user.teacher       
-        # if self.request.user.is_staff or teacher:
-        with transaction.atomic():
-            newCourse = serializer.save()
-            # if user is teacher, add course to the teacher
-            if teacher:
-                teacher.courses.add(newCourse)
-                teacher.save()
-
 
 class TeacherViewSet(ModelViewSet):
     queryset = Teacher.objects.select_related('user').prefetch_related('courses').all()
@@ -112,8 +73,53 @@ class StudentViewSet(ModelViewSet):
             serializer.is_valid(raise_exception=True)
             serializer.save()
             return Response(serializer.data)
+
+class CourseViewSet(ModelViewSet):
+    def get_queryset(self):
+        return Course.objects.select_related('category').prefetch_related('teachers', 'students').all()
+
+    def get_permissions(self):
+        if self.request.method in SAFE_METHODS:
+            return [AllowAny()]
+        elif self.request.method in ('PUT', 'POST'):
+            return [IsAuthenticated()]
+        return [IsAdminUser()]
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return GetCourseSerializer
+        return CourseSerializer
+        # TODO: for PUT, only the course teacher and admin can change course detail
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['user_id'] = self.request.user.id
+        return context
     
+    def create(self, request, *args, **kwargs):
+        teacher = Teacher.objects.filter(user_id=self.request.user.id).first()
+        self.request.user.teacher = teacher
+        if self.request.user.is_staff or self.request.user.teacher:
+            return super().create(request, *args, **kwargs)
+        return Response('Require admin or teacher account.', status=status.HTTP_403_FORBIDDEN)
+        # TODO: multiple teacher course
+
+    def perform_create(self, serializer):
+        teacher = self.request.user.teacher       
+        # if self.request.user.is_staff or teacher:
+        with transaction.atomic():
+            newCourse = serializer.save()
+            # if user is teacher, add course to the teacher
+            if teacher:
+                teacher.courses.add(newCourse)
+                teacher.save()
+
 class AssignmentViewSet(ModelViewSet):
+    def get_permissions(self):
+        if self.request.method in SAFE_METHODS:
+            return [IsAuthenticated(), IsAdminOrCourseTeacherOrCourseStudent()]
+        return [IsAuthenticated(), IsAdminOrCourseTeacher()]
+
     def get_queryset(self):
         return Assignment.objects.filter(
             course_id=self.kwargs['course_pk']
@@ -127,14 +133,13 @@ class AssignmentViewSet(ModelViewSet):
 
     def get_serializer_class(self):
         return AssignmentSerializer
-    
-    def create(self, request, *args, **kwargs):
-        try:
-            return super().create(request, *args, **kwargs)
-        except:
-            return Response('Only authorized for admin or teachers of the course', status=status.HTTP_403_FORBIDDEN)
 
 class LessonViewSet(ModelViewSet):
+    def get_permissions(self):
+        if self.request.method in SAFE_METHODS:
+            return [IsAuthenticated(), IsAdminOrCourseTeacherOrCourseStudent()]
+        return [IsAuthenticated(), IsAdminOrCourseTeacher()]
+
     def get_queryset(self):
         return Lesson.objects.filter(
             course_id=self.kwargs['course_pk']
@@ -148,9 +153,3 @@ class LessonViewSet(ModelViewSet):
         context = super().get_serializer_context()
         context['course_pk'] = self.kwargs['course_pk']
         return context
-    
-    def create(self, request, *args, **kwargs):
-        try:
-            return super().create(request, *args, **kwargs)
-        except:
-            return Response('Only authorized for admin or teachers of the course', status=status.HTTP_403_FORBIDDEN)
