@@ -1,6 +1,6 @@
-from .serializers import CourseCategorySerializer, CourseSerializer, GetCourseSerializer, CreateUpdateCourseCategorySerializer, PutTeacherSerializer, GetTeacherSerializer, PutStudentSerializer, GetStudentSerializer, AssignmentSerializer, GetAssignmentSerializer
+from .serializers import CourseCategorySerializer, CourseSerializer, GetCourseSerializer, CreateUpdateCourseCategorySerializer, PutTeacherSerializer, GetTeacherSerializer, PutStudentSerializer, GetStudentSerializer, AssignmentSerializer, LessonSerializer
 from django.shortcuts import get_object_or_404
-from .models import CourseCategory, Course, Teacher, Student, Assignment
+from .models import CourseCategory, Course, Teacher, Student, Assignment, Lesson
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, action
@@ -126,9 +126,28 @@ class AssignmentViewSet(ModelViewSet):
         return context
 
     def get_serializer_class(self):
-        if self.request.method in SAFE_METHODS:
-            return GetAssignmentSerializer
         return AssignmentSerializer
+    
+    def create(self, request, *args, **kwargs):
+        try:
+            return super().create(request, *args, **kwargs)
+        except:
+            return Response('Only authorized for admin or teachers of the course', status=status.HTTP_403_FORBIDDEN)
+
+class LessonViewSet(ModelViewSet):
+    def get_queryset(self):
+        return Lesson.objects.filter(
+            course_id=self.kwargs['course_pk']
+            ).select_related('course').all()
+
+    def get_serializer_class(self):
+        return LessonSerializer
+    
+    def get_serializer_context(self):
+        # by calling super().get_serializer_context(), request will be passed to serializer context
+        context = super().get_serializer_context()
+        context['course_pk'] = self.kwargs['course_pk']
+        return context
     
     def create(self, request, *args, **kwargs):
         try:

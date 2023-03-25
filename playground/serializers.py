@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from rest_framework import status
-from .models import Course, CourseCategory, Teacher, Student, Assignment
+from .models import Course, CourseCategory, Teacher, Student, Assignment, Lesson
 
 class SimpleCourseSerializer(serializers.ModelSerializer):
     class Meta:
@@ -90,7 +90,11 @@ class CustomValidationError(serializers.ValidationError):
 class AssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Assignment
-        fields = ['title', 'allow_submit']
+        fields = ['id', 'title', 'allow_submit', 'teacher', 'course']
+
+    id = serializers.IntegerField(read_only=True)
+    teacher = SimpleTeacherSerializer(read_only=True)
+    course = SimpleCourseSerializer(read_only=True)
 
     def validate(self, attrs):
         request = self.context['request']
@@ -106,13 +110,29 @@ class AssignmentSerializer(serializers.ModelSerializer):
             return super().validate(attrs)
         raise serializers.ValidationError('Only authorized for admin or teachers of the course')
 
-class GetAssignmentSerializer(serializers.ModelSerializer):
+# class GetAssignmentSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Assignment
+#         fields = ['id', 'title', 'allow_submit', 'teacher', 'course']       
+
+#     teacher = SimpleTeacherSerializer()
+#     course = SimpleCourseSerializer()
+
+class LessonSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Assignment
-        fields = ['id', 'title', 'allow_submit', 'teacher', 'course']       
+        model = Lesson
+        fields = ['id', 'title', 'course']
 
-    teacher = SimpleTeacherSerializer()
-    course = SimpleCourseSerializer()
+    id = serializers.IntegerField(read_only=True)
+    course = SimpleCourseSerializer(read_only=True)
 
+    def validate(self, attrs):
+        request = self.context['request']
+        teacher = Teacher.objects.filter(user_id=request.user.id).first()
+        course = Course.objects.filter(pk=self.context['course_pk']).first()
 
-
+        if request.user.is_staff or \
+        (teacher and teacher.id in (course_teacher.id for course_teacher in course.teachers.all())):
+            attrs['course_id'] = self.context['course_pk']
+            return super().validate(attrs)
+        raise serializers.ValidationError('Only authorized for admin or teachers of the course')

@@ -13,6 +13,7 @@ router.register(r'students', views.StudentViewSet)
 
 courses_router = routers.NestedDefaultRouter(router, r'courses', lookup='course')
 courses_router.register(r'assignments', views.AssignmentViewSet, basename='course-assignments')
+courses_router.register(r'lessons', views.LessonViewSet, basename='course-lessons')
 
 urlpatterns = [
     path('api/', include(router.urls)),
