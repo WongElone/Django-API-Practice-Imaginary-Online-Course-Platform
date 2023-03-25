@@ -110,18 +110,10 @@ class AssignmentSerializer(serializers.ModelSerializer):
             return super().validate(attrs)
         raise serializers.ValidationError('Only authorized for admin or teachers of the course')
 
-# class GetAssignmentSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Assignment
-#         fields = ['id', 'title', 'allow_submit', 'teacher', 'course']       
-
-#     teacher = SimpleTeacherSerializer()
-#     course = SimpleCourseSerializer()
-
 class LessonSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lesson
-        fields = ['id', 'title', 'course']
+        fields = ['id', 'title', 'course', 'video']
 
     id = serializers.IntegerField(read_only=True)
     course = SimpleCourseSerializer(read_only=True)

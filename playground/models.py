@@ -1,5 +1,7 @@
 from django.db import models
 from django.conf import settings
+from django.core.validators import FileExtensionValidator
+from .validators import FileSizeValidator
 
 # Create your models here.
 class CourseCategory(models.Model):
@@ -47,3 +49,9 @@ class Lesson(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='lessons')
+    video = models.FileField(
+        upload_to='course/videos', 
+        validators=[FileSizeValidator(max_mb=10), FileExtensionValidator(allowed_extensions=['mp4', 'webm', 'ogg'])],
+        null=True, 
+        blank=True
+    )
