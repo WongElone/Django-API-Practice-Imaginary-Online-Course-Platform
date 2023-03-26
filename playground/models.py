@@ -3,7 +3,6 @@ from django.conf import settings
 from django.core.validators import FileExtensionValidator
 from .validators import FileSizeValidator
 
-# Create your models here.
 class CourseCategory(models.Model):
     title = models.CharField(max_length=255)
 
@@ -68,6 +67,7 @@ class Lesson(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='lessons')
+    teacher = models.ForeignKey(Teacher, null=True, blank=True, on_delete=models.SET_NULL, related_name='lessons')
     video = models.FileField(
         upload_to='course/videos', 
         validators=[FileSizeValidator(max_mb=10), FileExtensionValidator(allowed_extensions=['mp4', 'webm', 'ogg'])],

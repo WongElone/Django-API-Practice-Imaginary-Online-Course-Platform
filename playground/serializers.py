@@ -66,11 +66,11 @@ class CourseSerializer(serializers.ModelSerializer):
         if any(word in attrs['title'] for word in foul_lang) or attrs['title'] == 'fucky':
             raise serializers.ValidationError('Title must not contain foul languages')
         return super().validate(attrs)
-
+    
 class UpdateTeacherSerializer(serializers.ModelSerializer):
     class Meta:
         model = Teacher
-        fields = ['courses', 'profile_picture']
+        fields = ['profile_picture']
 
 class RetrieveTeacherSerializer(serializers.ModelSerializer):
     class Meta:
@@ -83,7 +83,7 @@ class RetrieveTeacherSerializer(serializers.ModelSerializer):
 class UpdateStudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
-        fields = ['courses', 'profile_picture']
+        fields = ['profile_picture']
 
 class RetrieveStudentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -96,21 +96,20 @@ class RetrieveStudentSerializer(serializers.ModelSerializer):
 class AssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Assignment
-        fields = ['id', 'title', 'description', 'allow_submit', 'teacher', 'course']
+        fields = ['id', 'title', 'description', 'allow_submit', 'teacher']
 
     id = serializers.IntegerField(read_only=True)
     teacher = SimpleTeacherSerializer(read_only=True)
-    course = SimpleCourseSerializer(read_only=True)
-
-    def validate(self, attrs): # add attribute in validate function instead of create and update function can reduce codes       
-        attrs['course_id'] = self.context['course_pk']
+    
+    def create(self, validated_data):
+        validated_data['course_id'] = self.context['course_pk']
 
         request = self.context['request']
         teacher = Teacher.objects.filter(user_id=request.user.id).first()
         if teacher:
-            attrs['teacher_id'] = teacher.id
-        
-        return super().validate(attrs)
+            validated_data['teacher_id'] = teacher.id
+            
+        return super().create(validated_data)
 
 class AssignmentMaterialSerializer(serializers.ModelSerializer):
     class Meta:
@@ -127,13 +126,20 @@ class AssignmentMaterialSerializer(serializers.ModelSerializer):
 class LessonSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lesson
-        fields = ['id', 'title', 'course', 'video', 'created_at', 'updated_at']
+        fields = ['id', 'title', 'course', 'video', 'created_at', 'updated_at', 'teacher']
 
     id = serializers.IntegerField(read_only=True)
     course = SimpleCourseSerializer(read_only=True)
     created_at = serializers.DateTimeField(read_only=True)
     updated_at = serializers.DateTimeField(read_only=True)
+    teacher = SimpleTeacherSerializer(read_only=True)
+    
+    def create(self, validated_data):
+        validated_data['course_id'] = self.context['course_pk']
 
-    def validate(self, attrs):
-        attrs['course_id'] = self.context['course_pk']
-        return super().validate(attrs)
+        request = self.context['request']
+        teacher = Teacher.objects.filter(user_id=request.user.id).first()
+        if teacher:
+            validated_data['teacher_id'] = teacher.id
+            
+        return super().create(validated_data)
