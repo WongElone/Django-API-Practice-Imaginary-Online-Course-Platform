@@ -1,16 +1,16 @@
-from .serializers import RetrieveCourseCategorySerializer, CourseSerializer, RetrieveCourseSerializer, CourseCategorySerializer, UpdateTeacherSerializer, RetrieveTeacherSerializer, UpdateStudentSerializer, RetrieveStudentSerializer, AssignmentSerializer, AssignmentMaterialSerializer, LessonSerializer
+from .serializers import RetrieveCourseCategorySerializer, CourseSerializer, RetrieveCourseSerializer, CourseCategorySerializer, UpdateTeacherSerializer, RetrieveTeacherSerializer, UpdateStudentSerializer, RetrieveStudentSerializer, AssignmentSerializer, AssignmentMaterialSerializer, LessonSerializer, TeacherJoinCourseRequestSerializer, RetrieveTeacherJoinCourseRequestSerializer
 from django.shortcuts import get_object_or_404
-from .models import CourseCategory, Course, Teacher, Student, Assignment, AssignmentMaterial, Lesson
+from .models import CourseCategory, Course, Teacher, TeacherJoinCourseRequest, Student, Assignment, AssignmentMaterial, Lesson
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, action
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
-from rest_framework.mixins import CreateModelMixin, UpdateModelMixin, RetrieveModelMixin
+from rest_framework.mixins import CreateModelMixin, UpdateModelMixin, RetrieveModelMixin, DestroyModelMixin, ListModelMixin
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser, SAFE_METHODS
 from django.db import transaction
-from .permissions import IsAdminOrCourseTeacher, IsAdminOrCourseTeacherOrCourseStudent, IsAdminOrTeacher
-from rest_framework.exceptions import NotFound
+from .permissions import IsAdminOrCourseTeacher, IsAdminOrCourseTeacherOrCourseStudent, IsAdminOrTeacher, IsNotAdminUser
+from rest_framework.exceptions import ParseError, NotFound, MethodNotAllowed, PermissionDenied
 
 class CourseCategoryViewSet(ModelViewSet):
     queryset = CourseCategory.objects.prefetch_related('courses').all()
@@ -49,6 +49,51 @@ class TeacherViewSet(ModelViewSet):
             serializer.is_valid(raise_exception=True)
             serializer.save()
             return Response(serializer.data)
+        
+class TeacherJoinCourseRequestViewSet(
+    ListModelMixin, 
+    RetrieveModelMixin, 
+    CreateModelMixin, 
+    DestroyModelMixin, 
+    GenericViewSet):
+    def get_queryset(self):
+        course_id = self.request.query_params.get('course')
+        teacher_id = self.request.query_params.get('teacher')
+        queryset = TeacherJoinCourseRequest.objects
+
+        if course_id:
+            queryset = queryset.filter(course_id=course_id)
+        if teacher_id:
+            queryset = queryset.filter(teacher_id=teacher_id)
+        return queryset.select_related('teacher', 'course').all()
+
+    def get_permissions(self):
+        if self.request.method in SAFE_METHODS or self.request.method == 'DELETE':
+            return [IsAuthenticated()]
+        elif self.request.method == 'POST':
+            return [IsNotAdminUser()]
+        return [IsAdminUser()]
+
+    def get_serializer_class(self):
+        if self.request.method in SAFE_METHODS:
+            return RetrieveTeacherJoinCourseRequestSerializer
+        return TeacherJoinCourseRequestSerializer
+    
+    def destroy(self, request, *args, **kwargs):
+        teacher = Teacher.objects.filter(user_id=request.user.id).first()
+        instance = self.get_object()
+
+        if not teacher or instance.course.id not in (teacher_course.id for teacher_course in teacher.courses.all()):
+            raise PermissionDenied('You are not teacher of the course.')
+        
+        isAccept = (self.request.query_params.get('accept') == 'accept')
+        with transaction.atomic():
+            if isAccept:
+                course = Course.objects.get(pk=instance.course.id)
+                teacherInRequest = Teacher.objects.get(pk=instance.teacher.id)
+                teacherInRequest.courses.add(course)
+                teacherInRequest.save()
+            return super().destroy(request, *args, **kwargs)
     
 class StudentViewSet(ModelViewSet):
     queryset = Student.objects.select_related('user').prefetch_related('courses').all()

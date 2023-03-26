@@ -30,6 +30,11 @@ class Teacher(models.Model):
     def __str__(self) -> str:
         return f'{self.user.first_name} {self.user.last_name}'
     
+class TeacherJoinCourseRequest(models.Model):
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='teacher_join_course_requests')
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='teacher_join_course_requests')
+    created_at = models.DateTimeField(auto_now_add=True)
+    
 class Student(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     courses = models.ManyToManyField(Course, blank=True, related_name='students')

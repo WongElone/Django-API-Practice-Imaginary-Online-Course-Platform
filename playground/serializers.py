@@ -1,9 +1,10 @@
 from rest_framework import serializers
 from rest_framework import status
-from .models import Course, CourseCategory, Teacher, Student, Assignment, AssignmentMaterial, Lesson
+from .models import Course, CourseCategory, Teacher, TeacherJoinCourseRequest, Student, Assignment, AssignmentMaterial, Lesson
 # FIXME: decouple
 from core.models import User
 from django.conf import settings
+from rest_framework.exceptions import ParseError, NotFound, PermissionDenied
 
 class SimpleUserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -92,6 +93,37 @@ class RetrieveStudentSerializer(serializers.ModelSerializer):
     
     user = SimpleUserSerializer(read_only=True)
     courses = RetrieveCourseSerializer(many=True, read_only=True)
+
+class TeacherJoinCourseRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TeacherJoinCourseRequest
+        fields = ['course']
+
+    def create(self, validated_data):
+        request = self.context['request']
+
+        teacher = Teacher.objects.filter(user_id=request.user.id).first()
+        if not teacher:
+            raise PermissionDenied("This method is only allowed to teachers")
+
+        course_pk = validated_data['course'].id
+        course = Course.objects.filter(pk=course_pk).first()
+        if not course:
+            raise NotFound(f"Course with id = {course_pk} not found.")
+        
+        if course.id in (teacher_course.id for teacher_course in teacher.courses.all()):
+            raise PermissionDenied("You are already in this course.")
+
+        validated_data['teacher_id'] = teacher.id
+        return super().create(validated_data)
+
+class RetrieveTeacherJoinCourseRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TeacherJoinCourseRequest
+        fields = ['id', 'teacher', 'course', 'created_at']
+
+    teacher = SimpleTeacherSerializer()
+    course = SimpleCourseSerializer()
 
 class AssignmentSerializer(serializers.ModelSerializer):
     class Meta:

@@ -4,7 +4,6 @@ from django.db import transaction
 from .models import User
 from playground.models import Teacher, Student
 from rest_framework import serializers
-from rest_framework.exceptions import ParseError
 
 class UserCreateSerializer(BaseUserCreateSerializer):
     class Meta(BaseUserCreateSerializer.Meta):
