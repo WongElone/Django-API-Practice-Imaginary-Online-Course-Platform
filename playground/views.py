@@ -11,7 +11,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser, S
 from django.db import transaction
 from .permissions import IsAdminOrCourseTeacher, IsAdminOrCourseTeacherOrCourseStudent, IsAdminOrTeacher
 from rest_framework.exceptions import NotFound
-    
+
 class CourseCategoryViewSet(ModelViewSet):
     queryset = CourseCategory.objects.prefetch_related('courses').all()
     

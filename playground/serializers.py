@@ -118,10 +118,10 @@ class AssignmentMaterialSerializer(serializers.ModelSerializer):
 
     id = serializers.IntegerField(read_only=True)
     created_at = serializers.DateTimeField(read_only=True)
-
-    def validate(self, attrs):
-        attrs['assignment_id'] = self.context['assignment_pk']
-        return super().validate(attrs)
+    
+    def create(self, validated_data):
+        validated_data['assignment_id'] = self.context['assignment_pk']
+        return super().create(validated_data)
 
 class LessonSerializer(serializers.ModelSerializer):
     class Meta:
