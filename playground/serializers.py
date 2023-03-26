@@ -1,24 +1,28 @@
 from rest_framework import serializers
 from rest_framework import status
-from .models import Course, CourseCategory, Teacher, Student, Assignment, Lesson
+from .models import Course, CourseCategory, Teacher, Student, Assignment, AssignmentMaterial, Lesson
+# FIXME: decouple
+from core.models import User
+from django.conf import settings
+
+class SimpleUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email']
 
 class SimpleCourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
         fields = ['id', 'title']
-class CourseCategorySerializer(serializers.ModelSerializer):
+
+class RetrieveCourseCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = CourseCategory
-        fields = ['id', 'title', 'courses', 'slug']
+        fields = ['id', 'title', 'courses']
     
-    courses = SimpleCourseSerializer(many=True)
-
-    slug = serializers.SerializerMethodField(method_name='get_slug', read_only=True)
-
-    def get_slug(self, category: CourseCategory):
-        return f'{category.id} - {category.title}'
+    courses = SimpleCourseSerializer(many=True, read_only=True)
     
-class CreateUpdateCourseCategorySerializer(serializers.ModelSerializer):
+class CourseCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = CourseCategory
         fields = ['title', 'courses']
@@ -31,20 +35,25 @@ class SimpleCourseCategorySerializer(serializers.ModelSerializer):
 class SimpleTeacherSerializer(serializers.ModelSerializer):
     class Meta:
         model = Teacher
-        fields = ['id', 'user_id']
+        fields = ['id', 'user', 'profile_picture']
+
+    user = SimpleUserSerializer(read_only=True)
+    
 class SimpleStudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
-        fields = ['id', 'user_id']
+        fields = ['id', 'user', 'profile_picture']
+    
+    user = SimpleUserSerializer(read_only=True)
 
-class GetCourseSerializer(serializers.ModelSerializer):
+class RetrieveCourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
         fields = ['id', 'title', 'created_at', 'category', 'teachers', 'students']
 
-    category = SimpleCourseCategorySerializer()
-    teachers = SimpleTeacherSerializer(many=True)
-    students = SimpleStudentSerializer(many=True)
+    category = SimpleCourseCategorySerializer(read_only=True)
+    teachers = SimpleTeacherSerializer(many=True, read_only=True)
+    students = SimpleStudentSerializer(many=True, read_only=True)
 
 class CourseSerializer(serializers.ModelSerializer):
     class Meta:
@@ -58,35 +67,36 @@ class CourseSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Title must not contain foul languages')
         return super().validate(attrs)
 
-
-class PutTeacherSerializer(serializers.ModelSerializer):
+class UpdateTeacherSerializer(serializers.ModelSerializer):
     class Meta:
         model = Teacher
-        fields = ['courses']
+        fields = ['courses', 'profile_picture']
 
-class GetTeacherSerializer(serializers.ModelSerializer):
+class RetrieveTeacherSerializer(serializers.ModelSerializer):
     class Meta:
         model = Teacher
-        fields = ['id', 'user_id', 'courses']
+        fields = ['id', 'user', 'courses', 'profile_picture']
 
-    courses = SimpleCourseSerializer(many=True)
+    user = SimpleUserSerializer(read_only=True)
+    courses = SimpleCourseSerializer(many=True, read_only=True)
 
-class PutStudentSerializer(serializers.ModelSerializer):
+class UpdateStudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
-        fields = ['courses']
+        fields = ['courses', 'profile_picture']
 
-class GetStudentSerializer(serializers.ModelSerializer):
+class RetrieveStudentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Student
-        fields = ['id', 'user_id', 'courses']
+        fields = ['id', 'user', 'courses', 'profile_picture']
     
-    courses = GetCourseSerializer(many=True)
+    user = SimpleUserSerializer(read_only=True)
+    courses = RetrieveCourseSerializer(many=True, read_only=True)
 
 class AssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Assignment
-        fields = ['id', 'title', 'allow_submit', 'teacher', 'course']
+        fields = ['id', 'title', 'description', 'allow_submit', 'teacher', 'course']
 
     id = serializers.IntegerField(read_only=True)
     teacher = SimpleTeacherSerializer(read_only=True)
@@ -102,13 +112,27 @@ class AssignmentSerializer(serializers.ModelSerializer):
         
         return super().validate(attrs)
 
+class AssignmentMaterialSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssignmentMaterial
+        fields = ['id', 'name', 'file', 'created_at']
+
+    id = serializers.IntegerField(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+
+    def validate(self, attrs):
+        attrs['assignment_id'] = self.context['assignment_pk']
+        return super().validate(attrs)
+
 class LessonSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lesson
-        fields = ['id', 'title', 'course', 'video']
+        fields = ['id', 'title', 'course', 'video', 'created_at', 'updated_at']
 
     id = serializers.IntegerField(read_only=True)
     course = SimpleCourseSerializer(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    updated_at = serializers.DateTimeField(read_only=True)
 
     def validate(self, attrs):
         attrs['course_id'] = self.context['course_pk']

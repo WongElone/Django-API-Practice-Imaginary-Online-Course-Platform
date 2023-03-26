@@ -12,6 +12,7 @@ class CourseCategory(models.Model):
 
 class Course(models.Model):
     title = models.CharField(max_length=255)
+    description = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     # TODO: allow category to be null
     category = models.ForeignKey(CourseCategory, on_delete=models.CASCADE, related_name='courses')
@@ -22,6 +23,10 @@ class Course(models.Model):
 class Teacher(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     courses = models.ManyToManyField(Course, blank=True, related_name='teachers')
+    profile_picture = models.ImageField(null=True, default=None, upload_to='teacher/images', validators=[
+        FileSizeValidator(max_mb=1),
+        FileExtensionValidator(allowed_extensions=['jpg', 'png', 'webp'])
+        ])
 
     def __str__(self) -> str:
         return self.user.username
@@ -29,12 +34,17 @@ class Teacher(models.Model):
 class Student(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     courses = models.ManyToManyField(Course, blank=True, related_name='students')
+    profile_picture = models.ImageField(null=True, default=None, upload_to='student/images', validators=[
+        FileSizeValidator(max_mb=1),
+        FileExtensionValidator(allowed_extensions=['jpg', 'png', 'webp'])
+        ])
 
     def __str__(self) -> str:
         return self.user.username
 
 class Assignment(models.Model):
     title = models.CharField(max_length=255)
+    description = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     allow_submit = models.BooleanField(default=True)
@@ -43,6 +53,15 @@ class Assignment(models.Model):
 
     def __str__(self) -> str:
         return self.title
+
+class AssignmentMaterial(models.Model):
+    name = models.CharField(max_length=255) # non unique name
+    file = models.FileField(upload_to='assignment', validators=[
+        FileSizeValidator(max_mb=5),
+        FileExtensionValidator(allowed_extensions=['jpg', 'png', 'webp', 'zip', 'pdf', 'txt', 'docx', 'xlsx', 'pptx'])
+    ])
+    created_at = models.DateTimeField(auto_now_add=True)
+    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name='materials')
 
 class Lesson(models.Model):
     title = models.CharField(max_length=255)
