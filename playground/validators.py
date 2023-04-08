@@ -10,7 +10,7 @@ class FileSizeValidator(object):
 
     def __call__(self, file):
         if file.size > self.max_mb * 1024 * 1024:
-            raise ValidationError(f'Files cannot be larger than {self.max_mb or 1}mb.')
+            raise ValidationError(f'Files cannot be larger than {self.max_mb}mb.')
     
     # need this such that the validator is serializable in migration file
     def __eq__(self, other):
