@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view, action
 from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
-from rest_framework.mixins import CreateModelMixin, UpdateModelMixin, RetrieveModelMixin, DestroyModelMixin, ListModelMixin
+from rest_framework.mixins import CreateModelMixin, RetrieveModelMixin, DestroyModelMixin, ListModelMixin
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser, SAFE_METHODS
 from django.db import transaction
 from .permissions import IsAdminOrCourseTeacher, IsAdminOrCourseTeacherOrCourseStudent, IsAdminOrTeacher, IsNotAdminUser
@@ -26,16 +26,23 @@ class CourseCategoryViewSet(ModelViewSet):
         return CourseCategorySerializer
         # request.data.course in [course.id for course in teacher.courses]
 
-class TeacherViewSet(ModelViewSet):
+class TeacherViewSet(
+    GenericViewSet,
+    RetrieveModelMixin,
+    ListModelMixin,
+    DestroyModelMixin
+):
     queryset = Teacher.objects.select_related('user').prefetch_related('courses').all()
-    permission_classes = [IsAdminUser]
+    serializer_class = RetrieveTeacherSerializer
 
-    def get_serializer_class(self):
-        if self.request.method == 'GET':
-            return RetrieveTeacherSerializer
-        return UpdateTeacherSerializer
+    def get_permissions(self):
+        if '/me/' in self.request.path:
+            return [IsNotAdminUser()]
+        if self.request.method in SAFE_METHODS or self.request.method == 'DELETE':
+            return [IsAdminUser()]
+        raise MethodNotAllowed('POST, PUT')
     
-    @action(detail=False, methods=['GET', 'PUT'], permission_classes=[IsAuthenticated])
+    @action(detail=False, methods=['GET', 'PUT'], permission_classes=[IsAuthenticated, IsNotAdminUser])
     def me(self, request):
         teacher = Teacher.objects.filter(user_id=request.user.id).select_related('user').first()
         if not teacher:
@@ -95,16 +102,23 @@ class TeacherJoinCourseRequestViewSet(
                 teacherInRequest.save()
             return super().destroy(request, *args, **kwargs)
     
-class StudentViewSet(ModelViewSet):
+class StudentViewSet(
+    GenericViewSet,
+    RetrieveModelMixin,
+    ListModelMixin,
+    DestroyModelMixin
+):
     queryset = Student.objects.select_related('user').prefetch_related('courses').all()
-    permission_classes = [IsAdminUser]
+    serializer_class = RetrieveStudentSerializer
 
-    def get_serializer_class(self):
-        if self.request.method == 'GET':
-            return RetrieveStudentSerializer
-        return UpdateStudentSerializer
+    def get_permissions(self):
+        if '/me/' in self.request.path:
+            return [IsNotAdminUser()]
+        if self.request.method in SAFE_METHODS or self.request.method == 'DELETE':
+            return [IsAdminUser()]
+        raise MethodNotAllowed('POST, PUT')
     
-    @action(detail=False, methods=['GET', 'PUT'], permission_classes=[IsAuthenticated])
+    @action(detail=False, methods=['GET', 'PUT'], permission_classes=[IsAuthenticated, IsNotAdminUser])
     def me(self, request):
         student = Student.objects.filter(user_id=request.user.id).select_related('user').first()
         if not student:
@@ -121,7 +135,10 @@ class StudentViewSet(ModelViewSet):
 
 class CourseViewSet(ModelViewSet):
     def get_queryset(self):
-        return Course.objects.select_related('category').prefetch_related('teachers', 'students', 'teachers__user', 'students__user').all()
+        return Course.objects\
+            .select_related('category')\
+            .prefetch_related('teachers', 'students', 'teachers__user', 'students__user')\
+            .all()
 
     def get_permissions(self):
         if self.request.method in SAFE_METHODS:
@@ -136,17 +153,10 @@ class CourseViewSet(ModelViewSet):
         if self.request.method == 'GET':
             return RetrieveCourseSerializer
         return CourseSerializer
-        # TODO: for PUT, only the course teacher and admin can change course detail
-
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context['user_id'] = self.request.user.id
-        return context
     
-    # TODO: multiple teacher course
     def perform_create(self, serializer):
         teacher = Teacher.objects.filter(user_id=self.request.user.id).first()    
-        # if self.request.user.is_staff or teacher:
+
         with transaction.atomic():
             newCourse = serializer.save()
             # if user is teacher, add course to the teacher

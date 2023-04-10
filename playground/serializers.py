@@ -63,9 +63,8 @@ class CourseSerializer(serializers.ModelSerializer):
         # TODO: allow category to be null  
 
     def validate(self, attrs):
-        foul_lang = ['fuck', 'ass', 'shit']
-        if any(word in attrs['title'] for word in foul_lang) or attrs['title'] == 'fucky':
-            raise serializers.ValidationError('Title must not contain foul languages')
+        if len(attrs['title']) < 3:
+            raise serializers.ValidationError('Course title must not be at least 3 letters long')
         return super().validate(attrs)
     
 class UpdateTeacherSerializer(serializers.ModelSerializer):
@@ -92,7 +91,7 @@ class RetrieveStudentSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'courses', 'profile_picture']
     
     user = SimpleUserSerializer(read_only=True)
-    courses = RetrieveCourseSerializer(many=True, read_only=True)
+    courses = SimpleCourseSerializer(many=True, read_only=True)
 
 class TeacherJoinCourseRequestSerializer(serializers.ModelSerializer):
     class Meta:
@@ -158,7 +157,7 @@ class AssignmentMaterialSerializer(serializers.ModelSerializer):
 class LessonSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lesson
-        fields = ['id', 'title', 'course', 'video', 'created_at', 'updated_at', 'teacher']
+        fields = ['id', 'title', 'course', 'video', 'created_at', 'updated_at', 'teacher', 'description']
 
     id = serializers.IntegerField(read_only=True)
     course = SimpleCourseSerializer(read_only=True)
